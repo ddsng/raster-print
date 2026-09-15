@@ -1,0 +1,1499 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RASTER — susun foto jadi lembar cetak</title>
+<meta name="description" content="Susun foto jadi lembar cetak A4, A5, Letter atau kanvas Instagram. Tata letak otomatis, ekspor PNG 300 dpi, dan PDF tanpa batas jumlah halaman. Semua diproses di peramban — foto tidak pernah diunggah ke mana pun.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23dcdfe3'/%3E%3Crect x='4' y='4' width='11' height='15' fill='%2314171a'/%3E%3Crect x='17' y='4' width='11' height='9' fill='%23e0402a'/%3E%3Crect x='17' y='15' width='11' height='13' fill='%2314171a'/%3E%3Crect x='4' y='21' width='11' height='7' fill='%23e0402a'/%3E%3C/svg%3E">
+<style>
+  /* baseline the artifact host used to inject; kept so the page behaves the
+     same outside the sandbox. [hidden] must stay !important — several
+     elements here are display:flex and would otherwise ignore it. */
+  :root { color-scheme: light dark; }
+  body { margin: 0; padding: 0; font: 14px -apple-system, BlinkMacSystemFont, sans-serif; background: #faf9f5; color: #141413; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --bg: #dcdfe3;
+    --grid: #c3c9cf;
+    --panel: #ffffff;
+    --panel-2: #f4f6f7;
+    --ink: #14171a;
+    --line: #b9c0c7;
+    --line-soft: #d5dade;
+    --muted: #5f666d;
+    --accent: #e0402a;
+    --accent-ink: #ffffff;
+    --accent-wash: #fdf1ee;
+    --shadow: rgba(20, 23, 26, .20);
+    --paper: #ffffff;
+    --paper-ink: #14171a;
+    --cell-empty: #ececec;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15181b;
+      --grid: #23282c;
+      --panel: #1e2225;
+      --panel-2: #262b2f;
+      --ink: #e9ecee;
+      --line: #363d43;
+      --line-soft: #2b3136;
+      --muted: #8d959c;
+      --accent: #ef5a41;
+      --accent-ink: #17191b;
+      --accent-wash: #2a1d1a;
+      --shadow: rgba(0, 0, 0, .55);
+      --cell-empty: #dcdcdc;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #15181b;
+    --grid: #23282c;
+    --panel: #1e2225;
+    --panel-2: #262b2f;
+    --ink: #e9ecee;
+    --line: #363d43;
+    --line-soft: #2b3136;
+    --muted: #8d959c;
+    --accent: #ef5a41;
+    --accent-ink: #17191b;
+    --accent-wash: #2a1d1a;
+    --shadow: rgba(0, 0, 0, .55);
+    --cell-empty: #dcdcdc;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: -1px -1px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, select, input { font-family: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- masthead ---------- */
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 22px 24px 10px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--accent); flex: none;
+    transform: translateY(-3px);
+  }
+  .brand h1 {
+    margin: 0;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    margin-top: 3px;
+  }
+  .readout {
+    display: flex; gap: 18px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+  }
+  .readout b {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+
+  /* ---------- shell ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 304px minmax(0, 1fr);
+    gap: 18px;
+    padding: 12px 24px 48px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 16px;
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  @media (max-width: 900px) { .panel { position: static; max-height: none; } }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .label {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--muted);
+  }
+  .label .tick { width: 7px; height: 1px; background: var(--accent); flex: none; }
+
+  .drop {
+    border: 1.5px dashed var(--line);
+    border-radius: 2px;
+    padding: 20px 10px;
+    text-align: center;
+    cursor: pointer;
+    background: none;
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-wash); }
+  .drop p { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+  select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    font-size: 12.5px;
+    background: var(--panel);
+  }
+
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
+  .seg button {
+    flex: 1;
+    padding: 8px 4px;
+    background: var(--panel);
+    border: none;
+    border-left: 1px solid var(--line);
+    font-size: 11.5px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: background .12s, color .12s;
+  }
+  .seg button:first-child { border-left: none; }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+
+  .slider-head {
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .slider-head span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+
+  .check {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; cursor: pointer; user-select: none;
+  }
+  .check input { accent-color: var(--accent); }
+
+  .btnrow { display: flex; gap: 8px; }
+  .btn {
+    flex: 1;
+    padding: 9px 6px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 2px;
+    font-size: 11.5px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .btn:hover { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  .btn[hidden] { display: none; }   /* .btn sets display:flex, which would beat the UA [hidden] rule */
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn:disabled:hover { background: var(--panel); color: var(--ink); border-color: var(--line); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { filter: brightness(.9); background: var(--accent); color: var(--accent-ink); }
+  .hint {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .thumbs {
+    display: flex; flex-direction: column; gap: 5px;
+    max-height: 300px; overflow-y: auto;
+  }
+  .thumb {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line-soft);
+    border-radius: 2px;
+    padding: 4px;
+    background: var(--panel-2);
+    cursor: grab;
+  }
+  .thumb.dragging { opacity: .35; }
+  .thumb.dropafter { border-bottom: 2px solid var(--accent); }
+  .thumb.dropbefore { border-top: 2px solid var(--accent); }
+  .thumb img { width: 34px; height: 34px; object-fit: cover; flex: none; background: var(--cell-empty); }
+  .thumb .meta { flex: 1; min-width: 0; }
+  .thumb .nm { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thumb .or {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+  }
+  .thumb .idx {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px; color: var(--muted); flex: none; width: 16px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .thumb .kill {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; padding: 4px; display: flex; flex: none;
+  }
+  .thumb .kill:hover { color: var(--accent); }
+
+  /* ---------- sheets ---------- */
+  .stage { min-height: 380px; }
+  .empty {
+    border: 1.5px dashed var(--line);
+    border-radius: 2px;
+    padding: 64px 28px;
+    text-align: center;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--panel) 45%, transparent);
+    font-size: 13.5px;
+    line-height: 1.65;
+    max-width: 62ch;
+    margin-inline: auto;
+  }
+  .empty strong { color: var(--ink); font-weight: 600; }
+
+  .sheets { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .frame { position: relative; }
+  .frame-label {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .07em;
+    margin-bottom: 7px;
+    font-variant-numeric: tabular-nums;
+  }
+  .frame-label .reg {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 1.5px solid var(--accent); flex: none;
+  }
+  .sheet {
+    position: relative;
+    background: var(--paper);
+    box-shadow: 0 10px 26px var(--shadow);
+    display: grid;
+  }
+  .cell { position: relative; overflow: hidden; background: var(--cell-empty); }
+  .cell.contain { background: var(--paper); }
+  .cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cell.contain img { object-fit: contain; }
+  .crop { position: absolute; width: 11px; height: 11px; pointer-events: none; }
+  .crop.tl { top: -5px; left: -5px; border-top: 1.5px solid var(--paper-ink); border-left: 1.5px solid var(--paper-ink); }
+  .crop.tr { top: -5px; right: -5px; border-top: 1.5px solid var(--paper-ink); border-right: 1.5px solid var(--paper-ink); }
+  .crop.bl { bottom: -5px; left: -5px; border-bottom: 1.5px solid var(--paper-ink); border-left: 1.5px solid var(--paper-ink); }
+  .crop.br { bottom: -5px; right: -5px; border-bottom: 1.5px solid var(--paper-ink); border-right: 1.5px solid var(--paper-ink); }
+
+  /* ---------- export overlay ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--bg) 94%, #000);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .overlay[hidden] { display: none; }
+  .overlay-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    flex: none;
+  }
+  .overlay-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .overlay-sub {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .07em; margin-top: 3px;
+  }
+  .overlay-grid {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-wrap: wrap; gap: 22px;
+    align-content: flex-start;
+    padding: 22px;
+  }
+  .export-item { display: flex; flex-direction: column; gap: 7px; max-width: 100%; }
+  .export-item img {
+    max-width: min(300px, 100%);
+    max-height: 440px;
+    width: auto; height: auto;
+    display: block;
+    background: var(--paper);
+    box-shadow: 0 10px 26px var(--shadow);
+  }
+  .overlay-pdf {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 22px 22px;
+    min-height: 0;
+  }
+  .overlay-pdf[hidden] { display: none; }
+  .pdf-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .pdf-note {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 68ch;
+  }
+  .export-item .btn { padding: 6px; font-size: 11px; }
+  .export-item .btn[hidden] { display: none; }
+  .overlay-pdf iframe {
+    flex: 1;
+    width: 100%;
+    min-height: 320px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper);
+  }
+  .overlay-grid[hidden] { display: none; }
+
+  .export-item .cap {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  @media print {
+    html, body {
+      background: #fff !important;
+      background-image: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .no-print { display: none !important; }
+    .layout {
+      display: block !important;
+      padding: 0 !important;
+      gap: 0 !important;
+    }
+    .stage { min-height: 0 !important; }
+    .sheets {
+      display: block !important;
+      gap: 0 !important;
+    }
+    .frame { margin: 0 !important; padding: 0 !important; overflow: hidden; }
+    .sheet { box-shadow: none !important; margin: 0 !important; }
+    .crop { display: none !important; }
+  }
+</style>
+
+<div class="top no-print">
+  <div>
+    <div class="brand"><span class="dot"></span><h1>RASTER</h1></div>
+    <div class="tag">Susun foto jadi lembar cetak — tata letak otomatis</div>
+  </div>
+  <div class="readout" id="readout"></div>
+</div>
+
+<div class="layout">
+  <aside class="panel no-print">
+
+    <div class="field">
+      <div class="label"><span class="tick"></span>Unggah foto</div>
+      <button class="drop" id="drop" type="button">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+        <p>Klik atau seret foto ke sini</p>
+      </button>
+      <input id="file" type="file" accept="image/*" multiple hidden>
+    </div>
+
+    <div class="field">
+      <div class="label"><span class="tick"></span>Ukuran halaman</div>
+      <select id="size"></select>
+      <div class="seg" role="group" aria-label="Orientasi">
+        <button type="button" id="ori-portrait" aria-pressed="true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="3" width="12" height="18" rx="1.5"/></svg>Potret
+        </button>
+        <button type="button" id="ori-landscape" aria-pressed="false">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="1.5"/></svg>Lanskap
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="label"><span class="tick"></span>Foto per halaman</div>
+      <select id="perpage">
+        <option value="auto">Otomatis — seimbangkan halaman</option>
+        <option value="1">1 foto</option>
+        <option value="2">2 foto</option>
+        <option value="3">3 foto</option>
+        <option value="4">4 foto</option>
+        <option value="5">5 foto</option>
+        <option value="6">6 foto</option>
+        <option value="8">8 foto</option>
+        <option value="9">9 foto</option>
+        <option value="12">12 foto</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <div class="label"><span class="tick"></span>Pemotongan foto</div>
+      <div class="seg" role="group" aria-label="Pemotongan foto">
+        <button type="button" id="fit-cover" aria-pressed="true">Isi penuh</button>
+        <button type="button" id="fit-contain" aria-pressed="false">Muat utuh</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="slider-head"><span>Jarak antar foto</span><span id="gap-val">4mm</span></div>
+      <input id="gap" type="range" min="0" max="15" step="0.5" value="4" aria-label="Jarak antar foto dalam milimeter">
+    </div>
+
+    <div class="field">
+      <div class="slider-head"><span>Margin halaman</span><span id="margin-val">8mm</span></div>
+      <input id="margin" type="range" min="0" max="25" step="0.5" value="8" aria-label="Margin halaman dalam milimeter">
+    </div>
+
+    <label class="check">
+      <input id="groupori" type="checkbox">
+      Kelompokkan berdasarkan orientasi
+    </label>
+
+    <div class="field">
+      <div class="btnrow">
+        <button class="btn" id="shuffle" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg>Acak
+        </button>
+        <button class="btn" id="clear" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Hapus semua
+        </button>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" id="export" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>Ekspor PNG
+        </button>
+      </div>
+      <p class="hint" id="export-hint"></p>
+      <div class="btnrow">
+        <button class="btn" id="pdf" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg>Simpan PDF
+        </button>
+        <button class="btn" id="nativeprint" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>Cetak
+        </button>
+      </div>
+      <p class="hint" id="print-hint"></p>
+    </div>
+
+    <div class="field" id="order-field" hidden>
+      <div class="label"><span class="tick"></span>Urutan foto (<span id="order-count">0</span>)</div>
+      <div class="thumbs" id="thumbs"></div>
+      <p class="hint">Seret untuk mengubah urutan.</p>
+    </div>
+
+  </aside>
+
+  <main class="stage" id="stage"></main>
+</div>
+
+<div class="overlay no-print" id="overlay" hidden>
+  <div class="overlay-bar">
+    <div>
+      <div class="overlay-title" id="overlay-title">Hasil ekspor</div>
+      <div class="overlay-sub" id="overlay-sub"></div>
+    </div>
+    <button class="btn" id="overlay-close" type="button" style="flex:none;padding:8px 14px">Tutup</button>
+  </div>
+  <div class="overlay-grid" id="overlay-grid"></div>
+  <div class="overlay-pdf" id="overlay-pdf" hidden>
+    <div class="pdf-head">
+      <p class="pdf-note" id="pdf-note"></p>
+      <button class="btn" id="pdf-save" type="button" data-save hidden style="flex:none;padding:8px 14px">Simpan lagi</button>
+    </div>
+    <iframe title="Pratinjau PDF"></iframe>
+  </div>
+</div>
+
+<style id="print-page"></style>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- data ---------------- */
+
+  /* screen formats are authored in px and converted to mm at 300 dpi,
+     so the same layout engine, print path and margins work for both worlds */
+  var DPI = 300;
+  var PX_PER_MM_300 = DPI / 25.4;          /* 11.811 */
+  function mmOf(px) { return Math.round((px / PX_PER_MM_300) * 100) / 100; }
+
+  var PAGE_SIZES = {
+    A4:     { group: "Cetak", unit: "mm", w: 210,   h: 297,   label: "A4" },
+    A5:     { group: "Cetak", unit: "mm", w: 148,   h: 210,   label: "A5" },
+    Letter: { group: "Cetak", unit: "mm", w: 215.9, h: 279.4, label: "Letter" },
+    Square: { group: "Cetak", unit: "mm", w: 200,   h: 200,   label: "Persegi" },
+
+    IGSquare:    { group: "Instagram", unit: "px", pxW: 1080, pxH: 1080, label: "Post persegi", ratio: "1:1" },
+    IGPortrait:  { group: "Instagram", unit: "px", pxW: 1080, pxH: 1350, label: "Post potret",  ratio: "4:5" },
+    IGLandscape: { group: "Instagram", unit: "px", pxW: 1080, pxH: 566,  label: "Post lanskap", ratio: "1.91:1" },
+    IGStory:     { group: "Instagram", unit: "px", pxW: 1080, pxH: 1920, label: "Story / Reels", ratio: "9:16" }
+  };
+
+  Object.keys(PAGE_SIZES).forEach(function (k) {
+    var s = PAGE_SIZES[k];
+    if (s.unit === "px") { s.w = mmOf(s.pxW); s.h = mmOf(s.pxH); }
+  });
+
+  /* preview: every sheet is drawn to the same longest-side box so formats
+     stay comparable side by side, whatever their real dimensions */
+  var PREVIEW_LONG_PX = 470;
+
+  var state = {
+    photos: [],
+    sizeKey: "A4",
+    orientation: "portrait",
+    perPage: "auto",
+    fit: "cover",
+    gapMm: 4,
+    marginMm: 8,
+    groupByOrientation: false
+  };
+
+  function uid() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  /* ---------------- layout engine ---------------- */
+
+  function chunkFixed(arr, size) {
+    var out = [];
+    for (var i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  /* auto: aim for 4 per sheet but balance so the last sheet is never an orphan */
+  function chunkBalanced(arr) {
+    var n = arr.length;
+    if (n === 0) return [];
+    var sheets = Math.ceil(n / 4);
+    var base = Math.floor(n / sheets);
+    var extra = n % sheets;
+    var out = [];
+    var pos = 0;
+    for (var s = 0; s < sheets; s++) {
+      var take = base + (s < extra ? 1 : 0);
+      out.push(arr.slice(pos, pos + take));
+      pos += take;
+    }
+    return out;
+  }
+
+  function getTemplates(n) {
+    switch (n) {
+      case 1:
+        return [{ colsFr: [1], rowsFr: [1], cells: [{ c: [0, 1], r: [0, 1] }] }];
+      case 2:
+        return [
+          { colsFr: [1, 1], rowsFr: [1], cells: [{ c: [0, 1], r: [0, 1] }, { c: [1, 2], r: [0, 1] }] },
+          { colsFr: [1], rowsFr: [1, 1], cells: [{ c: [0, 1], r: [0, 1] }, { c: [0, 1], r: [1, 2] }] }
+        ];
+      case 3:
+        return [
+          { colsFr: [1, 1, 1], rowsFr: [1], cells: [{ c: [0, 1], r: [0, 1] }, { c: [1, 2], r: [0, 1] }, { c: [2, 3], r: [0, 1] }] },
+          { colsFr: [1], rowsFr: [1, 1, 1], cells: [{ c: [0, 1], r: [0, 1] }, { c: [0, 1], r: [1, 2] }, { c: [0, 1], r: [2, 3] }] },
+          { colsFr: [2, 1], rowsFr: [1, 1], cells: [{ c: [0, 1], r: [0, 2] }, { c: [1, 2], r: [0, 1] }, { c: [1, 2], r: [1, 2] }] },
+          { colsFr: [1, 1], rowsFr: [2, 1], cells: [{ c: [0, 2], r: [0, 1] }, { c: [0, 1], r: [1, 2] }, { c: [1, 2], r: [1, 2] }] }
+        ];
+      case 4:
+        return [
+          { colsFr: [1, 1], rowsFr: [1, 1], cells: [{ c: [0, 1], r: [0, 1] }, { c: [1, 2], r: [0, 1] }, { c: [0, 1], r: [1, 2] }, { c: [1, 2], r: [1, 2] }] },
+          { colsFr: [1, 1, 1, 1], rowsFr: [1], cells: [0, 1, 2, 3].map(function (i) { return { c: [i, i + 1], r: [0, 1] }; }) },
+          { colsFr: [1], rowsFr: [1, 1, 1, 1], cells: [0, 1, 2, 3].map(function (i) { return { c: [0, 1], r: [i, i + 1] }; }) },
+          { colsFr: [2, 1], rowsFr: [1, 1, 1], cells: [{ c: [0, 1], r: [0, 3] }, { c: [1, 2], r: [0, 1] }, { c: [1, 2], r: [1, 2] }, { c: [1, 2], r: [2, 3] }] }
+        ];
+      default:
+        return null;
+    }
+  }
+
+  function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+
+  function cellAspect(cell, colsFr, rowsFr, pageAspect) {
+    var wfrac = sum(colsFr.slice(cell.c[0], cell.c[1])) / sum(colsFr);
+    var hfrac = sum(rowsFr.slice(cell.r[0], cell.r[1])) / sum(rowsFr);
+    return (pageAspect * wfrac) / hfrac;
+  }
+
+  function uniformGrid(n, pageAspect) {
+    var cols = Math.max(1, Math.round(Math.sqrt(n * pageAspect)));
+    cols = Math.min(cols, n);
+    var rows = Math.ceil(n / cols);
+    var lastRowCount = n - (rows - 1) * cols;
+    var cells = [];
+    for (var r = 0; r < rows; r++) {
+      if (r < rows - 1 || lastRowCount === cols || lastRowCount === 0) {
+        for (var k = 0; k < cols; k++) cells.push({ c: [k, k + 1], r: [r, r + 1] });
+      } else {
+        var base = Math.floor(cols / lastRowCount);
+        var extra = cols - base * lastRowCount;
+        var pos = 0;
+        for (var j = 0; j < lastRowCount; j++) {
+          var span = base + (j < extra ? 1 : 0);
+          cells.push({ c: [pos, pos + span], r: [r, r + 1] });
+          pos += span;
+        }
+      }
+    }
+    var colsFr = []; for (var a = 0; a < cols; a++) colsFr.push(1);
+    var rowsFr = []; for (var b = 0; b < rows; b++) rowsFr.push(1);
+    return { colsFr: colsFr, rowsFr: rowsFr, cells: cells };
+  }
+
+  /* pick the template whose cell shapes best match this group's photo shapes */
+  function layoutPageGroup(photos, pageAspect) {
+    var n = photos.length;
+    if (n === 0) return null;
+
+    var templates = getTemplates(n);
+    var imgAspects = photos.map(function (p) { return p.aspect || 1; });
+    var sortedImgIdx = photos.map(function (_, i) { return i; })
+      .sort(function (a, b) { return imgAspects[a] - imgAspects[b]; });
+    var sortedImgAspects = sortedImgIdx.map(function (i) { return imgAspects[i]; });
+
+    var chosen;
+    if (templates) {
+      var bestCost = Infinity;
+      var best = null;
+      templates.forEach(function (t) {
+        var cAsp = t.cells.map(function (c) { return cellAspect(c, t.colsFr, t.rowsFr, pageAspect); });
+        var cAspSorted = cAsp.slice().sort(function (a, b) { return a - b; });
+        var cost = 0;
+        for (var i = 0; i < n; i++) {
+          cost += Math.abs(Math.log(sortedImgAspects[i]) - Math.log(cAspSorted[i]));
+        }
+        if (cost < bestCost) { bestCost = cost; best = t; }
+      });
+      chosen = best;
+    } else {
+      chosen = uniformGrid(n, pageAspect);
+    }
+
+    var cAspects = chosen.cells.map(function (c) { return cellAspect(c, chosen.colsFr, chosen.rowsFr, pageAspect); });
+    var cellOrder = chosen.cells.map(function (_, i) { return i; })
+      .sort(function (a, b) { return cAspects[a] - cAspects[b]; });
+
+    var assignment = new Array(n);
+    for (var rank = 0; rank < n; rank++) {
+      var cellIdx = templates ? cellOrder[rank] : rank;
+      var photoIdx = templates ? sortedImgIdx[rank] : rank;
+      assignment[cellIdx] = photoIdx;
+    }
+
+    return { template: chosen, assignment: assignment };
+  }
+
+  /* ---------------- derived ---------------- */
+
+  function currentSize() { return PAGE_SIZES[state.sizeKey]; }
+  function isPxSize() { return currentSize().unit === "px"; }
+
+  function pageDims() {
+    var base = currentSize();
+    return state.orientation === "landscape"
+      ? { w: base.h, h: base.w }
+      : { w: base.w, h: base.h };
+  }
+
+  /* native output pixels: exact for screen formats, 300 dpi for print formats */
+  function pagePixels() {
+    var base = currentSize();
+    var w, h;
+    if (base.unit === "px") { w = base.pxW; h = base.pxH; }
+    else { w = Math.round(base.w * PX_PER_MM_300); h = Math.round(base.h * PX_PER_MM_300); }
+    return state.orientation === "landscape" ? { w: h, h: w } : { w: w, h: h };
+  }
+
+  function previewScale() {
+    var d = pageDims();
+    return PREVIEW_LONG_PX / Math.max(d.w, d.h);
+  }
+
+  /* one length, shown in whichever unit the chosen format thinks in */
+  function fmtLen(mm) {
+    return isPxSize() ? Math.round(mm * PX_PER_MM_300) + "px" : mm + "mm";
+  }
+
+  function fmtPageDim() {
+    if (isPxSize()) {
+      var p = pagePixels();
+      return p.w + "×" + p.h + "px";
+    }
+    var d = pageDims();
+    return Math.round(d.w) + "×" + Math.round(d.h) + "mm";
+  }
+
+  function orderedPhotos() {
+    if (!state.groupByOrientation) return state.photos;
+    return state.photos.slice().sort(function (a, b) { return b.aspect - a.aspect; });
+  }
+
+  function pageGroups() {
+    var list = orderedPhotos();
+    return state.perPage === "auto" ? chunkBalanced(list) : chunkFixed(list, Number(state.perPage));
+  }
+
+  function orientationName(p) {
+    if (!p.loaded) return "…";
+    if (p.aspect > 1.05) return "Lanskap";
+    if (p.aspect < 0.95) return "Potret";
+    return "Persegi";
+  }
+
+  /* ---------------- files ---------------- */
+
+  function addFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList).filter(function (f) {
+      return f.type && f.type.indexOf("image/") === 0;
+    });
+    if (!files.length) return;
+
+    files.forEach(function (f) {
+      var item = { id: uid(), url: URL.createObjectURL(f), name: f.name, aspect: 1, nw: 0, nh: 0, loaded: false };
+      state.photos.push(item);
+      var img = new Image();
+      img.onload = function () {
+        item.nw = img.naturalWidth;
+        item.nh = img.naturalHeight;
+        item.aspect = img.naturalWidth / img.naturalHeight;
+        item.loaded = true;
+        render();
+      };
+      img.onerror = function () { item.loaded = true; render(); };
+      img.src = item.url;
+    });
+    render();
+  }
+
+  function removePhoto(id) {
+    state.photos = state.photos.filter(function (p) {
+      if (p.id === id) { URL.revokeObjectURL(p.url); return false; }
+      return true;
+    });
+    render();
+  }
+
+  function clearAll() {
+    state.photos.forEach(function (p) { URL.revokeObjectURL(p.url); });
+    state.photos = [];
+    render();
+  }
+
+  function shuffle() {
+    var a = state.photos;
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    render();
+  }
+
+  /* ---------------- render ---------------- */
+
+  var el = {
+    readout: document.getElementById("readout"),
+    stage: document.getElementById("stage"),
+    thumbs: document.getElementById("thumbs"),
+    orderField: document.getElementById("order-field"),
+    orderCount: document.getElementById("order-count"),
+    printStyle: document.getElementById("print-page")
+  };
+
+  function pad2(n) { return String(n).padStart(2, "0"); }
+
+  function renderReadout(groups) {
+    el.readout.innerHTML =
+      '<div>Foto<b>' + pad2(state.photos.length) + '</b></div>' +
+      '<div>' + (isPxSize() ? "Slide" : "Lembar") + '<b>' + pad2(groups.length) + '</b></div>' +
+      '<div>Ukuran<b>' + fmtPageDim() + '</b></div>';
+  }
+
+  function renderThumbs() {
+    var n = state.photos.length;
+    el.orderField.hidden = n === 0;
+    el.orderCount.textContent = n;
+    if (n === 0) { el.thumbs.innerHTML = ""; return; }
+
+    el.thumbs.innerHTML = "";
+    state.photos.forEach(function (p, i) {
+      var row = document.createElement("div");
+      row.className = "thumb";
+      row.draggable = true;
+      row.dataset.index = i;
+      row.innerHTML =
+        '<span class="idx">' + pad2(i + 1) + '</span>' +
+        '<img alt="" src="' + p.url + '">' +
+        '<div class="meta"><div class="nm"></div><div class="or">' + orientationName(p) + '</div></div>' +
+        '<button class="kill" type="button" aria-label="Hapus foto">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>';
+      row.querySelector(".nm").textContent = p.name;
+      row.querySelector(".kill").addEventListener("click", function (e) {
+        e.stopPropagation();
+        removePhoto(p.id);
+      });
+      el.thumbs.appendChild(row);
+    });
+  }
+
+  function renderSheets(groups) {
+    var d = pageDims();
+    var contentW = d.w - state.marginMm * 2;
+    var contentH = d.h - state.marginMm * 2;
+    var pageAspect = contentW / contentH;
+
+    if (groups.length === 0) {
+      el.stage.innerHTML =
+        '<div class="empty no-print">Belum ada foto. Unggah beberapa di panel kiri — RASTER akan menyusunnya ke ' +
+        (isPxSize() ? "kanvas " : "lembar ") + '<strong>' + fmtPageDim() +
+        '</strong> secara otomatis, memilih tata letak yang paling cocok dengan bentuk foto potret dan lanskap.</div>';
+      return;
+    }
+
+    var scale = previewScale();
+
+    var wrap = document.createElement("div");
+    wrap.className = "sheets";
+
+    groups.forEach(function (group, pi) {
+      var layout = layoutPageGroup(group, pageAspect);
+      if (!layout) return;
+
+      var frame = document.createElement("div");
+      frame.className = "frame";
+
+      var label = document.createElement("div");
+      label.className = "frame-label no-print";
+      label.innerHTML = '<span class="reg"></span>' + (isPxSize() ? "Slide " : "Lembar ") +
+        pad2(pi + 1) + '/' + pad2(groups.length) + ' · ' + group.length + ' foto';
+      frame.appendChild(label);
+
+      var sheet = document.createElement("div");
+      sheet.className = "sheet";
+      sheet.style.width = (d.w * scale) + "px";
+      sheet.style.height = (d.h * scale) + "px";
+      sheet.style.padding = (state.marginMm * scale) + "px";
+      sheet.style.gap = (state.gapMm * scale) + "px";
+      sheet.style.gridTemplateColumns = layout.template.colsFr.map(function (f) { return f + "fr"; }).join(" ");
+      sheet.style.gridTemplateRows = layout.template.rowsFr.map(function (f) { return f + "fr"; }).join(" ");
+
+      ["tl", "tr", "bl", "br"].forEach(function (c) {
+        var m = document.createElement("div");
+        m.className = "crop " + c;
+        sheet.appendChild(m);
+      });
+
+      layout.template.cells.forEach(function (cell, ci) {
+        var photo = group[layout.assignment[ci]];
+        var box = document.createElement("div");
+        box.className = "cell" + (state.fit === "contain" ? " contain" : "");
+        box.style.gridColumn = (cell.c[0] + 1) + " / " + (cell.c[1] + 1);
+        box.style.gridRow = (cell.r[0] + 1) + " / " + (cell.r[1] + 1);
+        if (photo) {
+          var img = document.createElement("img");
+          img.src = photo.url;
+          img.alt = photo.name;
+          box.appendChild(img);
+        }
+        sheet.appendChild(box);
+      });
+
+      frame.appendChild(sheet);
+      wrap.appendChild(frame);
+    });
+
+    el.stage.innerHTML = "";
+    el.stage.appendChild(wrap);
+  }
+
+  function renderPrintCss() {
+    var d = pageDims();
+    el.printStyle.textContent =
+      "@media print {" +
+      "  @page { size: " + d.w + "mm " + d.h + "mm; margin: 0; }" +
+      "  .frame { width: " + d.w + "mm !important; height: " + d.h + "mm !important; }" +
+      "  .sheet { width: " + d.w + "mm !important; height: calc(" + d.h + "mm - 0.5px) !important;" +
+      "           padding: " + state.marginMm + "mm !important; gap: " + state.gapMm + "mm !important;" +
+      "           break-inside: avoid; page-break-inside: avoid; }" +
+      "  .frame { break-after: page; page-break-after: always; }" +
+      "  .frame:last-child { break-after: auto; page-break-after: auto; }" +
+      "}";
+  }
+
+  function renderControls(groups) {
+    document.getElementById("gap-val").textContent = fmtLen(state.gapMm);
+    document.getElementById("margin-val").textContent = fmtLen(state.marginMm);
+
+    var px = pagePixels();
+    var d = pageDims();
+    var empty = groups.length === 0;
+
+    document.getElementById("export").disabled = empty;
+    document.getElementById("pdf").disabled = empty;
+    document.getElementById("nativeprint").disabled = empty;
+    document.getElementById("export-hint").textContent =
+      "Menghasilkan PNG " + px.w + "×" + px.h + "px per " + (isPxSize() ? "slide" : "lembar") + ".";
+    document.getElementById("print-hint").textContent = isPxSize()
+      ? "PDF berukuran " + Math.round(d.w) + "×" + Math.round(d.h) + "mm — untuk Instagram, pakai Ekspor PNG."
+      : "Simpan PDF: " + currentSize().label + " 300 dpi, " + groups.length +
+        " halaman, langsung terunduh, tanpa batas jumlah halaman atau ukuran berkas. " +
+        "Cetak: dialog cetak peramban — pilih Save as PDF, ukuran kertas sudah terkunci ke " +
+        currentSize().label + ".";
+  }
+
+  function render() {
+    var groups = pageGroups();
+    renderReadout(groups);
+    renderControls(groups);
+    renderThumbs();
+    renderSheets(groups);
+    renderPrintCss();
+  }
+
+  /* ---------------- export ---------------- */
+
+  /* track geometry shared by canvas export and the CSS grid preview */
+  function tracks(frs, totalPx, gapPx, startPx) {
+    var unit = (totalPx - (frs.length - 1) * gapPx) / sum(frs);
+    var out = [];
+    var pos = startPx;
+    frs.forEach(function (f) {
+      var size = f * unit;
+      out.push({ pos: pos, size: size });
+      pos += size + gapPx;
+    });
+    return out;
+  }
+
+  function loadImage(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  function drawInto(ctx, img, x, y, w, h, mode) {
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    if (!iw || !ih) return;
+    var scale = mode === "contain"
+      ? Math.min(w / iw, h / ih)
+      : Math.max(w / iw, h / ih);
+    var dw = iw * scale, dh = ih * scale;
+    var dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  /* ---------- minimal PDF writer ----------
+     The artifact runs sandboxed, so window.print() is ignored and the browser
+     never offers "Save as PDF". We build the PDF ourselves instead: one page
+     per sheet, each holding a single full-bleed JPEG (DCTDecode), which the
+     PDF spec lets us embed byte-for-byte with no re-encoding. */
+
+  var PT_PER_MM = 72 / 25.4;
+
+  function latin1(str) {
+    var out = new Uint8Array(str.length);
+    for (var i = 0; i < str.length; i++) out[i] = str.charCodeAt(i) & 0xff;
+    return out;
+  }
+
+  function buildPdf(pages) {
+    var chunks = [];
+    var len = 0;
+    var offsets = [];
+
+    /* a part is a Uint8Array (structure) or a Blob (page JPEG). Keeping
+       the JPEGs as Blobs keeps them out of the JS heap entirely, which is
+       what lets the page size grow past a few dozen sheets. */
+    function partLen(p) { return p.byteLength != null ? p.byteLength : p.size; }
+    function push(part) { chunks.push(part); len += partLen(part); }
+    function str(s) { push(latin1(s)); }
+    function obj(n, body) { offsets[n] = len; str(n + " 0 obj\n" + body + "\nendobj\n"); }
+
+    str("%PDF-1.4\n%âãÏÓ\n");
+
+    var kids = pages.map(function (_, i) { return (3 + i * 3) + " 0 R"; }).join(" ");
+    obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+    obj(2, "<< /Type /Pages /Kids [" + kids + "] /Count " + pages.length + " >>");
+
+    pages.forEach(function (p, i) {
+      var pageNo = 3 + i * 3, contentNo = pageNo + 1, imgNo = pageNo + 2;
+      var w = p.ptW.toFixed(2), h = p.ptH.toFixed(2);
+
+      obj(pageNo,
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + w + " " + h + "]" +
+        " /Resources << /XObject << /Im0 " + imgNo + " 0 R >> >>" +
+        " /Contents " + contentNo + " 0 R >>");
+
+      var stream = "q " + w + " 0 0 " + h + " 0 0 cm /Im0 Do Q";
+      obj(contentNo, "<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream");
+
+      /* image object: header, raw JPEG bytes, footer */
+      offsets[imgNo] = len;
+      str(imgNo + " 0 obj\n<< /Type /XObject /Subtype /Image /Width " + p.pxW +
+          " /Height " + p.pxH + " /ColorSpace /DeviceRGB /BitsPerComponent 8" +
+          " /Filter /DCTDecode /Length " + partLen(p.jpeg) + " >>\nstream\n");
+      push(p.jpeg);
+      str("\nendstream\nendobj\n");
+    });
+
+    var total = 3 + pages.length * 3;
+    var xrefAt = len;
+    str("xref\n0 " + total + "\n0000000000 65535 f \n");
+    for (var n = 1; n < total; n++) {
+      str(String(offsets[n]).padStart(10, "0") + " 00000 n \n");
+    }
+    str("trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" + xrefAt + "\n%%EOF\n");
+
+    return new Blob(chunks, { type: "application/pdf" });
+  }
+
+  /* ---------- saving files ----------
+     Standalone build: served from GitHub Pages, not the artifact sandbox,
+     so an ordinary <a download> works and there is no 16 MB ceiling and no
+     rejected file extension. Every save affordance is always available. */
+
+  var downloadsApi = true;
+
+  function refreshSaveUi() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-save]"), function (b) {
+      b.hidden = false;
+    });
+  }
+
+  /* returns a message describing the outcome */
+  function offerSave(filename, blob) {
+    try {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      return Promise.resolve("Tersimpan sebagai " + filename + " (" + fmtBytes(blob.size) + ").");
+    } catch (err) {
+      return Promise.resolve("Gagal menyimpan: " + (err && err.message ? err.message : err));
+    }
+  }
+
+  function fmtBytes(n) {
+    if (n < 1024 * 1024) return Math.round(n / 1024) + " KB";
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  var exportUrls = [];
+
+  function clearExports() {
+    exportUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+    exportUrls = [];
+    document.getElementById("overlay-grid").innerHTML = "";
+    var frame = document.getElementById("overlay-pdf");
+    frame.querySelector("iframe").removeAttribute("src");
+    frame.hidden = true;
+    document.getElementById("overlay-grid").hidden = false;
+  }
+
+  function renderSheetToBlob(group, opts) {
+    var layout = layoutPageGroup(group, opts.pageAspect);
+    if (!layout) return Promise.resolve(null);
+
+    var canvas = document.createElement("canvas");
+    canvas.width = opts.w;
+    canvas.height = opts.h;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, opts.w, opts.h);
+
+    var t = layout.template;
+    var cols = tracks(t.colsFr, opts.w - opts.margin * 2, opts.gap, opts.margin);
+    var rows = tracks(t.rowsFr, opts.h - opts.margin * 2, opts.gap, opts.margin);
+
+    var jobs = t.cells.map(function (cell, ci) {
+      var photo = group[layout.assignment[ci]];
+      if (!photo) return Promise.resolve();
+      var x = cols[cell.c[0]].pos;
+      var xe = cols[cell.c[1] - 1];
+      var y = rows[cell.r[0]].pos;
+      var ye = rows[cell.r[1] - 1];
+      return loadImage(photo.url).then(function (img) {
+        drawInto(ctx, img, x, y, xe.pos + xe.size - x, ye.pos + ye.size - y, opts.fit);
+      }).catch(function () {});
+    });
+
+    return Promise.all(jobs).then(function () {
+      return new Promise(function (resolve) {
+        if (opts.type === "image/jpeg") canvas.toBlob(resolve, "image/jpeg", 0.92);
+        else canvas.toBlob(resolve, "image/png");
+      });
+    });
+  }
+
+  /* shared geometry for both export routes */
+  function exportOpts(type) {
+    var d = pageDims();
+    var px = pagePixels();
+    var scaleOut = px.w / d.w;
+    return {
+      w: px.w,
+      h: px.h,
+      margin: state.marginMm * scaleOut,
+      gap: state.gapMm * scaleOut,
+      fit: state.fit,
+      type: type || "image/png",
+      pageAspect: (d.w - state.marginMm * 2) / (d.h - state.marginMm * 2)
+    };
+  }
+
+  function openOverlay(title, sub) {
+    document.getElementById("overlay-title").textContent = title;
+    document.getElementById("overlay-sub").textContent = sub;
+    document.getElementById("overlay").hidden = false;
+  }
+
+  var lastPdf = null;
+
+  function savePdf() {
+    var groups = pageGroups();
+    if (!groups.length) return;
+
+    var btn = document.getElementById("pdf");
+    var original = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Membuat PDF…";
+
+    var opts = exportOpts("image/jpeg");
+    var d = pageDims();
+    var ptW = d.w * PT_PER_MM, ptH = d.h * PT_PER_MM;
+    var built = [];
+
+    var done = 0;
+    var chain = Promise.resolve();
+    groups.forEach(function (group) {
+      chain = chain.then(function () {
+        return renderSheetToBlob(group, opts).then(function (blob) {
+          built.push({ jpeg: blob, pxW: opts.w, pxH: opts.h, ptW: ptW, ptH: ptH });
+          done++;
+          btn.textContent = "Membuat PDF… " + done + "/" + groups.length;
+          /* yield to the event loop so the counter paints and the tab stays
+             responsive across long runs */
+          return new Promise(function (r) { setTimeout(r, 0); });
+        });
+      });
+    });
+
+    return chain.then(function () {
+      clearExports();
+      var blob = buildPdf(built);
+      var url = URL.createObjectURL(blob);
+      exportUrls.push(url);
+
+      document.getElementById("overlay-grid").hidden = true;
+      var frame = document.getElementById("overlay-pdf");
+      frame.hidden = false;
+
+      openOverlay(
+        "PDF siap",
+        groups.length + " halaman · " + Math.round(d.w) + "×" + Math.round(d.h) + "mm · " + fmtBytes(blob.size)
+      );
+      frame.querySelector("iframe").src = url;
+
+      var note = document.getElementById("pdf-note");
+      note.textContent = "Menyiapkan penyimpanan…";
+      lastPdf = { name: "raster-" + currentSize().label.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".pdf", blob: blob };
+
+      btn.disabled = false;
+      btn.innerHTML = original;
+
+      return offerSave(lastPdf.name, blob).then(function (msg) {
+        note.textContent = msg;
+        refreshSaveUi();
+      });
+    }).catch(function (err) {
+      btn.disabled = false;
+      btn.innerHTML = original;
+      openOverlay("PDF gagal dibuat", String(err && err.message ? err.message : err));
+    });
+  }
+
+  function exportSheets() {
+    var groups = pageGroups();
+    if (!groups.length) return;
+
+    var btn = document.getElementById("export");
+    var original = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Menyiapkan…";
+
+    var px = pagePixels();
+    var opts = exportOpts("image/png");
+
+    clearExports();
+    var grid = document.getElementById("overlay-grid");
+    openOverlay("Hasil ekspor", groups.length + " berkas · " + px.w + "×" + px.h +
+      "px · tekan Simpan di bawah tiap gambar");
+
+    var chain = Promise.resolve();
+    groups.forEach(function (group, i) {
+      chain = chain.then(function () {
+        return renderSheetToBlob(group, opts).then(function (blob) {
+          if (!blob) return;
+          var url = URL.createObjectURL(blob);
+          exportUrls.push(url);
+          var name = "raster-" + pad2(i + 1) + ".png";
+          var item = document.createElement("div");
+          item.className = "export-item";
+          var img = document.createElement("img");
+          img.src = url;
+          img.alt = name;
+          var cap = document.createElement("div");
+          cap.className = "cap";
+          cap.textContent = name + " · " + Math.round(blob.size / 1024) + " KB";
+
+          var save = document.createElement("button");
+          save.type = "button";
+          save.className = "btn";
+          save.setAttribute("data-save", "");
+          save.textContent = "Simpan";
+          save.hidden = !downloadsApi;
+          save.addEventListener("click", function () {
+            save.disabled = true;
+            offerSave(name, blob).then(function (msg) {
+              cap.textContent = msg;
+              save.disabled = false;
+            });
+          });
+
+          item.appendChild(img);
+          item.appendChild(cap);
+          item.appendChild(save);
+          grid.appendChild(item);
+        });
+      });
+    });
+
+    chain.then(function () {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    });
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  var sizeSel = document.getElementById("size");
+  ["Cetak", "Instagram"].forEach(function (groupName) {
+    var og = document.createElement("optgroup");
+    og.label = groupName;
+    Object.keys(PAGE_SIZES).forEach(function (k) {
+      var v = PAGE_SIZES[k];
+      if (v.group !== groupName) return;
+      var opt = document.createElement("option");
+      opt.value = k;
+      opt.textContent = v.unit === "px"
+        ? v.label + " · " + v.pxW + "×" + v.pxH + " (" + v.ratio + ")"
+        : v.label + " · " + v.w + "×" + v.h + "mm";
+      og.appendChild(opt);
+    });
+    sizeSel.appendChild(og);
+  });
+  sizeSel.value = state.sizeKey;
+  sizeSel.addEventListener("change", function () { state.sizeKey = this.value; render(); });
+
+  function bindSeg(aId, bId, aVal, bVal, key) {
+    var a = document.getElementById(aId), b = document.getElementById(bId);
+    function set(val) {
+      state[key] = val;
+      a.setAttribute("aria-pressed", String(val === aVal));
+      b.setAttribute("aria-pressed", String(val === bVal));
+      render();
+    }
+    a.addEventListener("click", function () { set(aVal); });
+    b.addEventListener("click", function () { set(bVal); });
+  }
+  bindSeg("ori-portrait", "ori-landscape", "portrait", "landscape", "orientation");
+  bindSeg("fit-cover", "fit-contain", "cover", "contain", "fit");
+
+  document.getElementById("perpage").addEventListener("change", function () {
+    state.perPage = this.value; render();
+  });
+
+  document.getElementById("gap").addEventListener("input", function () {
+    state.gapMm = Number(this.value); render();
+  });
+
+  document.getElementById("margin").addEventListener("input", function () {
+    state.marginMm = Number(this.value); render();
+  });
+
+  document.getElementById("groupori").addEventListener("change", function () {
+    state.groupByOrientation = this.checked; render();
+  });
+
+  document.getElementById("shuffle").addEventListener("click", shuffle);
+  document.getElementById("clear").addEventListener("click", clearAll);
+  document.getElementById("pdf").addEventListener("click", savePdf);
+  document.getElementById("export").addEventListener("click", exportSheets);
+  document.getElementById("nativeprint").addEventListener("click", function () {
+    /* blocked in the artifact sandbox, available here: the browser's own
+       print pipeline, which has no page ceiling at all and draws each
+       photo at printer resolution rather than through a canvas. */
+    window.print();
+  });
+
+  document.getElementById("pdf-save").addEventListener("click", function () {
+    if (!lastPdf) return;
+    var b = this;
+    b.disabled = true;
+    offerSave(lastPdf.name, lastPdf.blob).then(function (msg) {
+      document.getElementById("pdf-note").textContent = msg;
+      b.disabled = false;
+    });
+  });
+
+  var overlayEl = document.getElementById("overlay");
+  function closeOverlay() { overlayEl.hidden = true; clearExports(); }
+  document.getElementById("overlay-close").addEventListener("click", closeOverlay);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !overlayEl.hidden) closeOverlay();
+  });
+
+  var fileInput = document.getElementById("file");
+  var dropZone = document.getElementById("drop");
+  dropZone.addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function () {
+    if (this.files && this.files.length) addFiles(this.files);
+    this.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function () { dropZone.classList.remove("over"); });
+  });
+  dropZone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+  document.addEventListener("dragover", function (e) { e.preventDefault(); });
+  document.addEventListener("drop", function (e) {
+    if (e.target.closest && e.target.closest("#drop")) return;
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+
+  /* thumbnail drag-reorder */
+  var dragFrom = null;
+  el.thumbs.addEventListener("dragstart", function (e) {
+    var row = e.target.closest(".thumb");
+    if (!row) return;
+    dragFrom = Number(row.dataset.index);
+    row.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", String(dragFrom)); } catch (err) {}
+  });
+  el.thumbs.addEventListener("dragend", function () {
+    dragFrom = null;
+    Array.prototype.forEach.call(el.thumbs.children, function (c) {
+      c.classList.remove("dragging", "dropbefore", "dropafter");
+    });
+  });
+  el.thumbs.addEventListener("dragover", function (e) {
+    var row = e.target.closest(".thumb");
+    if (!row || dragFrom === null) return;
+    e.preventDefault();
+    var to = Number(row.dataset.index);
+    Array.prototype.forEach.call(el.thumbs.children, function (c) {
+      c.classList.remove("dropbefore", "dropafter");
+    });
+    if (to !== dragFrom) row.classList.add(to < dragFrom ? "dropbefore" : "dropafter");
+  });
+  el.thumbs.addEventListener("drop", function (e) {
+    var row = e.target.closest(".thumb");
+    if (!row || dragFrom === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var to = Number(row.dataset.index);
+    if (to === dragFrom) return;
+    var moved = state.photos.splice(dragFrom, 1)[0];
+    state.photos.splice(to, 0, moved);
+    dragFrom = null;
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
