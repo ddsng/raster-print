@@ -7,7 +7,7 @@ ke lembar A4, A5, Letter, persegi 200 mm, atau kanvas Instagram.
 Semuanya berjalan di peramban. Tidak ada server, tidak ada unggahan: foto tidak
 pernah meninggalkan komputermu.
 
-**Demo:** https://USERNAME.github.io/raster-print/
+**Demo:** https://ddsng.github.io/raster-print/
 
 ---
 
