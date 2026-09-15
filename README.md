@@ -73,8 +73,44 @@ canvas sehingga ketajamannya maksimal, dan tidak ada batas jumlah halaman sama
 sekali. Pakai ini untuk mencetak sendiri atau untuk pekerjaan yang sangat
 panjang. Pastikan *Margins* di dialog diset **None** dan *Scale* **100%**.
 
+## Sampul album
+
+Centang **Tambahkan halaman sampul** dan sampul menjadi lembar pertama, di depan
+semua lembar foto. Judul dan subjudul hanya tercetak di sampul — lembar foto di
+belakangnya tetap bersih tanpa teks sama sekali.
+
+Dua gaya, bisa ditukar kapan saja dan langsung terlihat di pratinjau:
+
+- **Berbingkai** — foto duduk di dalam margin mengisi bagian atas lembar, judul
+  ditata di bawahnya pada kertas putih. Tenang, seperti album foto cetak.
+- **Penuh** — foto memenuhi seluruh lembar tanpa margin, judul ditumpuk di
+  atasnya dengan gradasi gelap di bawah supaya teks tetap terbaca.
+
+Foto sampulnya bisa diunggah terpisah, atau ambil dari album lewat **Pakai foto
+ke-1**. Kalau kamu mengosongkan fotonya, sampul jadi halaman judul tipografis —
+judul di tengah lembar putih.
+
+Ukuran huruf sampul dihitung sebagai pecahan dari sisi pendek halaman, bukan
+angka tetap. Jadi sampul A5 punya proporsi yang sama dengan A4, dan sampul
+Instagram Story ikut menyesuaikan tanpa perlu diatur ulang.
+
+## Keterangan halaman di daftar urutan
+
+Tiap baris di panel **Urutan & halaman** memakai lencana `L03` yang menyebut
+lembar tempat foto itu akan dicetak, dan daftarnya dipotong pembatas per lembar
+— `Lembar 03 · 4 foto`. Nomornya ikut bergeser sendiri saat kamu mengubah foto
+per halaman, menyeret urutan, atau menyalakan sampul (semua foto mundur satu
+lembar). Untuk kanvas Instagram lencananya berbunyi `S03` dan pembatasnya
+menyebut *Slide*.
+
+Saat **Kelompokkan berdasarkan orientasi** aktif, urutan daftar tidak lagi sama
+dengan urutan cetak, jadi pembatasnya disembunyikan — lencana per barisnya tetap
+benar dan tetap bisa dipakai mencari.
+
 ## Fitur
 
+- Halaman sampul opsional dengan judul dan subjudul, dua gaya tata letak
+- Lencana nomor lembar dan pembatas per halaman di daftar urutan
 - Tata letak otomatis — mesin templat mencocokkan bentuk sel dengan rasio aspek
   tiap foto, jadi foto potret tidak dipaksa masuk kotak lanskap
 - Format cetak (A4, A5, Letter, persegi 200 mm) dan kanvas Instagram
